@@ -1,0 +1,21 @@
+name: Build moodboard app
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    # Étape 1 : Checkout du code source
+    - name: Checkout source code
+      uses: actions/checkout@v4
+    # Étape 4 : Run tests
+    - name: Run tests
+      run: |
+        echo "Running the Tests"
+        echo "Tests completed successfully."

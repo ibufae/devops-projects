@@ -1,0 +1,129 @@
+# Déclaration liste des services
+
+services:
+  # Service database: Base de données Postgresql
+
+  database:
+    # Nom du comteneur
+    container_name: database
+
+    # Choix de l'image
+
+    image: postgres:16.2-alpine
+
+    # Toujours forcer le rédémarrage du conteneur en cas de problème.
+
+    restart: always
+
+    # Déclaration des variables d'environnement requises
+
+    environment:
+      POSTGRES_USER: ${DATASOURCE_USERNAME}
+      POSTGRES_PASSWORD: ${DATASOURCE_PASSWORD}
+      POSTGRES_DB: lecloudfacile
+
+    # Montage du volume pour la persitence des données
+
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+    # Attachement du service au réseau <app-network>
+    networks:
+      - app-network
+
+  # Service adminer: Client web pour B-base de données
+
+  adminer:
+    # Nom du comteneur
+    container_name: adminer
+
+    # Choix de l'image
+
+    image: adminer
+
+    # Toujours forcer le rédémarrage du conteneur en cas de problème.
+
+    restart: always
+
+    # Indiquer que ce service dépend du service <database>
+
+    depends_on:
+      - database
+
+    # Attachement du service aux réseaux <app-network> pour communiquer avce la DB et <frontend> pour communiquer avec le proxy
+    networks:
+      - app-network
+      - frontend
+
+  # Service backend: Application springboot contenant le logique métier et exposant des apis pour faciliter la communication.
+
+  backend:
+    # Nom du comteneur
+    container_name: backend
+
+    # Cette phase permet de construire l'image Docker qui sera utilisé en s'appuyant sur le dockerfile. Le parametre <context> permet d'indiquer l'emplacement du répertoire sur lequel le build sera executé.
+
+    build:
+      context: ./moodboard-backend
+      dockerfile: Dockerfile
+
+    # Indiquer que ce service dépend du service <database>
+
+    depends_on:
+      - database
+
+    # Déclaration des variables d'environnement requises
+
+    environment:
+      SPRING_DATASOURCE_URL: ${DATASOURCE_URL}
+      SPRING_DATASOURCE_USERNAME: ${DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${DATASOURCE_PASSWORD}
+      FRONTEND_APP_URL: ${APP_URL}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+
+    # Attachement du service aux réseaux <app-network> pour communiquer avce la DB et <frontend> pour communiquer avec le proxy
+
+    networks:
+      - app-network
+      - frontend
+
+  # Service frontend: Application react qui exposent les pages de l'application.
+
+  frontend:
+    # Nom du comteneur
+    container_name: frontend
+
+    # Cette phase permet de construire l'image Docker qui sera utilisé en s'appuyant sur le dockerfile. Le parametre <context> permet d'indiquer l'emplacement du répertoire sur lequel le build sera executé.
+
+    build:
+      context: ./moodboard-frontend
+      dockerfile: Dockerfile
+      args:
+        REACT_APP_API_URL: ${REACT_APP_API_URL}
+
+    # Déclaration des variables d'environnement requises
+
+    environment:
+      REACT_APP_API_URL: ${REACT_APP_API_URL}
+
+    # Indiquer que ce service dépend du service <backend>
+
+    depends_on:
+      - backend
+
+    # Attachement du service aux réseaux <app-network> pour communiquer avce la DB et <frontend> pour communiquer avec le proxy
+    networks:
+      - app-network
+      - frontend
+# Création d'un volume nommé <pgdata> pour la persistance des données. Il sera utilisé par la base de données Postgresql.
+
+volumes:
+  pgdata:
+
+# Création d'un réseau nommé <app-network> pour l'ensemble des conteneurs qui vont appartenir à la stack et déclaration du réseau <frontend> utilisé par le proxy nginx.
+
+networks:
+  app-network:
+  frontend:
+    name: frontend
+    external: true
