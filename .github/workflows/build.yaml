@@ -22,5 +22,6 @@ jobs:
         cache: maven
     - run: java --version
     # Étape 4 : Run tests
-    - name: Run tests
+    - name: Run tests backend
       run: mvn -B test
+      working-directory: ./moodboard-backend
