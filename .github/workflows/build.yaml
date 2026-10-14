@@ -20,8 +20,9 @@ jobs:
         distribution: temurin
         java-version: '17'
         cache: maven
+        cache-dependency-path: moodboard-backend/pom.xml
     - run: java --version
     # Étape 4 : Run tests
-    - name: Run tests backend
-      run: mvn -B test
+    - name: Run tests
+      run: ./mvnw -B test
       working-directory: ./moodboard-backend
