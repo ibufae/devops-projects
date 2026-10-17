@@ -67,7 +67,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
 
       - name: Log in to Harbor
-        uses: docker/login-action@v5e57cd118135c172c3672efd75eb46360885c0ef
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef
         with:
           registry: backer-product-rake.ngrok-free.dev
           username: ${{ secrets.HARBOR_USERNAME }}
