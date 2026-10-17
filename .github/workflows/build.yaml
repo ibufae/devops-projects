@@ -36,7 +36,7 @@ jobs:
      # Check the Quality Gate status.
     - name: SonarQube Quality Gate check
       id: sonarqube-quality-gate-check
-      uses: sonarsource/sonarqube-quality-gate-action@master
+      uses: sonarsource/sonarqube-quality-gate-action@v1.2.1
       with:
         pollingTimeoutSec: 600
       env:
