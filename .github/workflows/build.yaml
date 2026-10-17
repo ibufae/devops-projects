@@ -39,7 +39,7 @@ jobs:
       with:
         fetch-depth: 0
     - name: sonarqube
-      uses: SonarSource/sonarqube-scan-action@v8.3.0
+      uses: SonarSource/sonarqube-scan-action@d209202bc7d53ff1cc128f7f907dac145c9d6ae9
       env:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
      # Check the Quality Gate status.
@@ -67,13 +67,13 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
 
       - name: Log in to Harbor
-        uses: docker/login-action@v3
+        uses: docker/login-action@v5e57cd118135c172c3672efd75eb46360885c0ef
         with:
           registry: backer-product-rake.ngrok-free.dev
           username: ${{ secrets.HARBOR_USERNAME }}
           password: ${{ secrets.HARBOR_PASSWORD }}
 
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8
         with:
           context: ./moodboard-${{ matrix.service }}
           push: true
