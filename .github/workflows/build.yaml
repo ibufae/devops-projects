@@ -77,8 +77,8 @@ jobs:
           push: true
           build-args: ${{ matrix.build_args }}
           tags: ${{ secrets.HARBOR_URL }}/moodboard/${{ matrix.service }}:${{ github.sha }}
-          cache-from: type=gha,scope=${{ matrix.service }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+          # cache-from: type=gha,scope=${{ matrix.service }}
+          # cache-to: type=gha,mode=max,scope=${{ matrix.service }}
   deploy-staging:
     needs:  build-and-push
     runs-on: ubuntu-latest
