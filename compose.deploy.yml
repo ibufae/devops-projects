@@ -24,7 +24,6 @@ services:
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
     networks:
       - app-network
-      - frontend
   frontend:
     container_name: frontend
     image: ${HARBOR_URL}/moodboard/frontend:${IMAGE_TAG:?}
@@ -33,11 +32,7 @@ services:
       - backend
     networks:
       - app-network
-      - frontend
 volumes:
   pgdata:
 networks:
   app-network:
-  frontend:
-    name: frontend
-    external: true
