@@ -1,0 +1,43 @@
+services:
+  database:
+    container_name: database
+    image: postgres:16.2-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: ${DATASOURCE_USERNAME}
+      POSTGRES_PASSWORD: ${DATASOURCE_PASSWORD}
+      POSTGRES_DB: lecloudfacile
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - app-network
+  backend:
+    container_name: backend
+    image: ${HARBOR_URL}/moodboard/backend:${IMAGE_TAG:?}
+    restart: always
+    depends_on: [database]
+    environment:
+      SPRING_DATASOURCE_URL: ${DATASOURCE_URL}
+      SPRING_DATASOURCE_USERNAME: ${DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${DATASOURCE_PASSWORD}
+      FRONTEND_APP_URL: ${APP_URL}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+    networks:
+      - app-network
+      - frontend
+  frontend:
+    container_name: frontend
+    image: ${HARBOR_URL}/moodboard/frontend:${IMAGE_TAG:?}
+    restart: always
+    depends_on:
+      - backend
+    networks:
+      - app-network
+      - frontend
+volumes:
+  pgdata:
+networks:
+  app-network:
+  frontend:
+    name: frontend
+    external: true
