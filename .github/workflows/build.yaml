@@ -102,6 +102,7 @@ jobs:
             echo "${{ secrets.HARBOR_PASSWORD }}" | docker login ${{ secrets.HARBOR_URL }} -u "${{ secrets.HARBOR_USERNAME }}" --password-stdin
             trap 'docker logout ${{ secrets.HARBOR_URL }}' EXIT
             echo "IMAGE_TAG=${{ github.sha }}" > .env.tag
+            echo "HARBOR_URL=${{ secrets.HARBOR_URL }}" >> .env.tag
             docker compose -f compose.deploy.yml --env-file .env --env-file .env.tag pull
             docker compose -f compose.deploy.yml --env-file .env --env-file .env.tag up -d
             docker image prune -a -f --filter "until=168h"
