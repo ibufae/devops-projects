@@ -117,7 +117,7 @@ jobs:
           payload: |
             text: " Deployment in staging failed"
   deploy-prod:
-    needs:  build-and-push
+    needs:  deploy-staging
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
