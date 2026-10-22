@@ -1,36 +1,12 @@
-name: Build moodboard app
+name: Build and deploymoodboard app
 on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout source code
-      uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-      with:
-        fetch-depth: 0
-    - name: Setup java
-      uses: actions/setup-java@v6
-      with:
-        distribution: temurin
-        java-version: '17'
-        cache: maven
-        cache-dependency-path: moodboard-backend/pom.xml
-    - run: java --version
-    # Étape 4 : Run tests
-    - name: Run tests
-      run: |
-        echo "Running the Tests"
-        echo "Tests completed successfully."
   quality:
     runs-on: ubuntu-latest
-    needs: test
     steps:
     - name: Checkout source code
       uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -47,9 +23,28 @@ jobs:
         pollingTimeoutSec: 600
       env:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-    - name: "Example show SonarQube Quality Gate Status value"
+    - name: "Show SonarQube Quality Gate Status value"
       run: echo "The Quality Gate status is ${{ steps.sonarqube-quality-gate-check.outputs.quality-gate-status }}"
-
+  test:
+    runs-on: ubuntu-latest
+    needs: quality
+    steps:
+    - name: Checkout source code
+      uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      with:
+        fetch-depth: 0
+    - name: Setup java
+      uses: actions/setup-java@v6
+      with:
+        distribution: temurin
+        java-version: '17'
+        cache: maven
+        cache-dependency-path: moodboard-backend/pom.xml
+    - run: java --version
+    - name: Run tests
+      run: |
+        echo "Running the Tests"
+        echo "Tests completed successfully."
   build-and-push:
     needs: ['test', 'quality']
     runs-on: ubuntu-latest
@@ -77,8 +72,6 @@ jobs:
           push: true
           build-args: ${{ matrix.build_args }}
           tags: ${{ secrets.HARBOR_URL }}/moodboard/${{ matrix.service }}:${{ github.sha }}
-          # cache-from: type=gha,scope=${{ matrix.service }}
-          # cache-to: type=gha,mode=max,scope=${{ matrix.service }}
   deploy-staging:
     needs:  build-and-push
     runs-on: ubuntu-latest
@@ -86,14 +79,14 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - uses: appleboy/scp-action@917f8b81dfc1ccd331fef9e2d61bdc6c8be94634
         with:
-          host: ${{ secrets.EC2_HOST }}
+          host: ${{ secrets.EC2_HOST_STAGING }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           source: compose.deploy.yml
           target: /opt/moodboard
       - uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17
         with:
-          host: ${{ secrets.EC2_HOST }}
+          host: ${{ secrets.EC2_HOST_STAGING }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
@@ -114,7 +107,7 @@ jobs:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
           webhook-type: incoming-webhook
           payload: |
-                text: " Deployment success"
+            text: " Deployment  in staingsuccess"
       - name: Notify Slack on failure
         if: failure()
         uses: slackapi/slack-github-action@b0fa283ad8fea605de13dc3f449259339835fc52
@@ -122,4 +115,48 @@ jobs:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
           webhook-type: incoming-webhook
           payload: |
-            text: " Deployment failed"
+            text: " Deployment in staging failed"
+  deploy-prod:
+    needs:  build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: appleboy/scp-action@917f8b81dfc1ccd331fef9e2d61bdc6c8be94634
+        with:
+          host: ${{ secrets.EC2_HOST_PROD }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: compose.deploy.yml
+          target: /opt/moodboard
+      - uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17
+        with:
+          host: ${{ secrets.EC2_HOST_PROD }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
+            cd /opt/moodboard
+            echo "${{ secrets.HARBOR_PASSWORD }}" | docker login ${{ secrets.HARBOR_URL }} -u "${{ secrets.HARBOR_USERNAME }}" --password-stdin
+            trap 'docker logout ${{ secrets.HARBOR_URL }}' EXIT
+            echo "IMAGE_TAG=${{ github.sha }}" > .env.tag
+            echo "HARBOR_URL=${{ secrets.HARBOR_URL }}" >> .env.tag
+            docker compose -f compose.deploy.yml --env-file .env --env-file .env.tag pull
+            docker compose -f compose.deploy.yml --env-file .env --env-file .env.tag up -d
+            docker image prune -a -f --filter "until=168h"
+            docker logout ${{ secrets.HARBOR_URL }}
+      - name: Notify Slack on success
+        if: success()
+        uses: slackapi/slack-github-action@b0fa283ad8fea605de13dc3f449259339835fc52
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            text: " Deployment in production success"
+      - name: Notify Slack on failure
+        if: failure()
+        uses: slackapi/slack-github-action@b0fa283ad8fea605de13dc3f449259339835fc52
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            text: " Deployment in production failed"
